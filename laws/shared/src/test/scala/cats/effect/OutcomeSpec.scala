@@ -20,7 +20,7 @@ import cats.{Eval /*, Id*/}
 import cats.effect.kernel.Outcome
 import cats.effect.testkit.OutcomeGenerators
 import cats.implicits._
-import cats.laws.discipline.{ApplicativeErrorTests, MonadErrorTests}
+import cats.laws.discipline.{ApplicativeErrorTests, MonadErrorTests, BifunctorTests}
 
 import org.specs2.mutable.Specification
 
@@ -41,4 +41,8 @@ class OutcomeSpec extends Specification with Discipline {
   checkAll(
     "Outcome[Eval, Int, *]",
     ApplicativeErrorTests[Outcome[Eval, Int, *], Int].applicativeError[Int, Int, Int])
+
+  checkAll(
+    "Outcome[Eval, *, *]",
+    BifunctorTests[Outcome[Eval, *, *]].bifunctor[Int, Int, Int, Int, Int, Int])  
 }

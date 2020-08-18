@@ -16,7 +16,19 @@
 
 package cats.effect.kernel
 
-import cats.{~>, Applicative, ApplicativeError, Eq, Monad, MonadError, Order, Show, Traverse}
+import cats.{
+  ~>,
+  Applicative,
+  ApplicativeError,
+  Bifunctor,
+  Eq,
+  Functor,
+  Monad,
+  MonadError,
+  Order,
+  Show,
+  Traverse
+}
 import cats.implicits._
 
 import scala.annotation.tailrec
@@ -59,13 +71,30 @@ private[kernel] trait LowPriorityImplicits {
       case _ => false
     }
 
+  implicit def bifunctor[F[_]: Functor]: Bifunctor[Outcome[F, *, *]] =
+    new OutcomeBifunctor[F] {
+      val FF: Functor[F] = Functor[F]
+    }
+
+  protected trait OutcomeBifunctor[F[_]] extends Bifunctor[Outcome[F, *, *]] {
+    implicit val FF: Functor[F]
+
+    def bimap[A, B, C, D](fab: Outcome[F, A, B])(f: A => C, g: B => D): Outcome[F, C, D] =
+      fab match {
+        case Completed(fa) => Completed(fa.map(g))
+        case Errored(e) => Errored(f(e))
+        case Canceled() => Canceled()
+      }
+  }
+
   implicit def applicativeError[F[_], E](
       implicit F: Applicative[F]): ApplicativeError[Outcome[F, E, *], E] =
     new OutcomeApplicativeError[F, E]
 
   protected class OutcomeApplicativeError[F[_]: Applicative, E]
-      extends ApplicativeError[Outcome[F, E, *], E] {
-
+      extends ApplicativeError[Outcome[F, E, *], E]
+      with OutcomeBifunctor[F] {
+    val FF: Functor[F] = Functor[F]
     def pure[A](x: A): Outcome[F, E, A] = Completed(x.pure[F])
 
     def handleErrorWith[A](fa: Outcome[F, E, A])(f: E => Outcome[F, E, A]): Outcome[F, E, A] =
